@@ -1,10 +1,11 @@
+import React from "react";
 import {
   GoogleMap,
   useLoadScript,
   Marker,
   InfoWindow,
 } from "@react-google-maps/api";
-import { formatRelative } from "date-fns";
+import { add, formatRelative } from "date-fns";
 /*
   formatRelative formats time relative to current time.
   Takes 2 dates as parameters, compares them, and makes a string of a date (when the 
@@ -28,7 +29,6 @@ import {
 } from "@reach/combobox";
 import "@reach/combobox/styles.css";
 
-const libraries = ["places"];
 const mapContainerStyle = {
   // set width and height of the div they put around the googleMap
   // map takes up the space of the container it's in
@@ -36,20 +36,14 @@ const mapContainerStyle = {
   height: "100vh",
 };
 
-function App() {
-  // On launch, opens map to this point
-  const center = useMemo(() => ({ lat: 43, lng: -80 }), []);
-  // GoogleMap options
-  const options = useMemo(
-    () => ({
-      disableDefaultUI: true,
-      clickableIcons: false,
-      styles: mapStyles,
-      zoomControl: true,
-    }),
-    []
-  );
+const libraries = ["places"];
 
+function App() {
+  // Load Script for map
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
   const [markers, setMarkers] = useState([]);
   /*
     There are 2 ways to use setMarkers.
@@ -62,6 +56,19 @@ function App() {
   // state to store the current selected marker the user wants to see details for.
   // starts as null and gets a value when the user clicks a marker
   const [selectedMarker, setSelectedMarker] = useState(null);
+
+  // On launch, opens map to this point
+  const center = useMemo(() => ({ lat: 43, lng: -80 }), []);
+  // GoogleMap options
+  const options = useMemo(
+    () => ({
+      disableDefaultUI: true,
+      clickableIcons: false,
+      styles: mapStyles,
+      zoomControl: true,
+    }),
+    []
+  );
 
   /*
     To avoid recreating the onClick => set markers function on every render
@@ -82,11 +89,6 @@ function App() {
       },
     ]);
   }, []);
-  /*
-    consider making a function onMapRightclick as above
-    SetMarkers filter to delete markers
-
-  */
 
   // To retain a ref to the map instance. Used for when searching, pan and zoom the map
   const mapRef = useRef();
@@ -100,15 +102,6 @@ function App() {
     // use state when you want to cause re-renders
     // use ref when you want to retain state without causing re-renders
   }, []);
-
-  // Load Script for map
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries,
-  });
-  if (loadError) return "Error loading maps";
-  if (!isLoaded) return "Loading maps";
-  // No hooks beneath IF statements
 
   // To show markers on the map, you render them inside the GoogleMap component
   // Markers.map. For each marker, show a marker component that comes with the GoogleMaps package
@@ -129,18 +122,29 @@ function App() {
       )
     );
   };
+  // useCallback so that it only ever creates one of these functions
+  // no dependency array - never need to change the definition of this function
+  // pass moveMapTo function as a prop to the search component so that the search Function can receive the prop: moveMapTo
+  const moveMapTo = useCallback(({ lat, lng }) => {
+    mapRef.current.panTo({ lat, lng });
+    mapRef.current.setZoom(16);
+  }, []);
+
+  if (loadError) return "Error loading maps";
+  if (!isLoaded) return "Loading maps";
+  // No hooks beneath IF statements
 
   return (
     <div>
       <h1>Logo</h1>
-      <Search />
+      <Search moveMapTo={moveMapTo} />
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={9}
         center={center}
         options={options}
         onClick={onMapClick}
-        // onLoad={onMapLoad}
+        onLoad={onMapLoad}
       >
         {markers.map((marker) => (
           <Marker
@@ -194,7 +198,7 @@ function App() {
 // Also need to listen for when it changes. Put in arrw func that receives the event and does something with that event
 // In this case, it calls the setValue function from usePlacesAutocomplete & pass in the value inside the event
 // Dont want comboboxinput enabled unless usplacesauto is ready
-function Search() {
+function Search({ moveMapTo }) {
   const {
     ready,
     value,
@@ -216,7 +220,7 @@ function Search() {
   // getGeocode returns results that you have to wait for, because it's a promise
   // getGeocode takes an object that has an address property, which is the address received in combobox onSelect
 
-  // getLatLng extracts lat and lng from the result of getGeocode.
+  // getLatLng extracts lat and lng from the result of getGeocode. it's not asynchronous
 
   //comboboxPopover receives all the suggestions that google places gives
   // if status is OK, map over the suggestions
@@ -227,12 +231,14 @@ function Search() {
       <Combobox
         // might need to wrap comboxbox in div and move classname to div
         onSelect={async (address) => {
+          setValue(address, false);
+          clearSuggestions();
           try {
             const results = await getGeocode({ address });
-            const { lat, lng } = getLatLng(results[0]);
-            console.log(lat, lng);
-          } catch (err) {
-            console.log("error");
+            const { lat, lng } = await getLatLng(results[0]);
+            moveMapTo({ lat, lng });
+          } catch (error) {
+            console.log(error);
           }
         }}
       >
@@ -246,7 +252,7 @@ function Search() {
           // These are all properites of an <input>, not specific to combobox
         />
 
-        <ComboboxPopover>
+        <ComboboxPopover className="popover">
           {status === "OK" &&
             data.map(({ id, description }) => (
               <ComboboxOption key={id} value={description} />
