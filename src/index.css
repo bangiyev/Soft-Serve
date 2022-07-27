@@ -5,9 +5,68 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 18px;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+h1 {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  color: #d3cbcb;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+}
+
+.search {
+  position:absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 400px;
+  z-index: 10;
+}
+
+.search input {
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  width: 100%;
+}
+
+.infoWindowDiv {
+  background: blue;
+  border: 1px solid #ccc;
+  padding: 15
+}
+
+.popover {
+
+  background-color: aliceblue;
+  cursor: pointer; 
+  max-width: 500px;
+  list-style: none;
+  
+}
+.popover :hover{
+  background-color: rgb(188, 205, 205);
+}
+
+.locate {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  z-index: 10;
+}
+
+.locate img {
+  width: 40px;
+  cursor: pointer;
 }
