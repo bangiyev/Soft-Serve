@@ -40,6 +40,12 @@ const libraries = ["places"];
 
 function App() {
   // Load Script for map
+  /*
+    useLoadScript hook is the first thing here to set up the google script. 
+    in browser, inspect elements of <head>, you'll see google maps api in a script tag.
+    useLoadscript puts it there for you
+
+  */
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
     libraries,
@@ -138,6 +144,7 @@ function App() {
     <div>
       <h1>Logo</h1>
       <Search moveMapTo={moveMapTo} />
+      <FindUser moveMapTo={moveMapTo} />
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={9}
@@ -198,6 +205,33 @@ function App() {
 // Also need to listen for when it changes. Put in arrw func that receives the event and does something with that event
 // In this case, it calls the setValue function from usePlacesAutocomplete & pass in the value inside the event
 // Dont want comboboxinput enabled unless usplacesauto is ready
+
+// findUser is a component for a button.
+// getCurrentPosition gives 2 callback function. If theres an error, just handle it with a function that does nothing.
+// success function will do something
+// .getCurrentPosition( ()=>{}, ()=> null  )  ---- (success, error, options) -- not using options
+// success function gives a value we can call position
+function FindUser({ moveMapTo }) {
+  return (
+    <button
+      className="findUser"
+      onClick={() => {
+        const result = navigator.geolocation.getCurrentPosition(
+          (position) => {
+            moveMapTo({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          () => null
+        );
+      }}
+    >
+      <img src="location.svg" alt="locate me" />
+    </button>
+  );
+}
+
 function Search({ moveMapTo }) {
   const {
     ready,
@@ -226,13 +260,21 @@ function Search({ moveMapTo }) {
   // if status is OK, map over the suggestions
   // each suggestion has an ID and a description. in data.map, for each suggestion, deconstruct ID & desc and render
   // a comboboxOption, which needs a key since we're mapping, and value which is a description
+
+  /* 
+    When a user clicks on an address from the suggestions, call setValue to update state and place whatever they chose in there.
+    False = does the above without fetching new data from google.
+    Then clear suggestions so they arent shown anymore to the user
+    Then use the selected address in the getGeocode function to get results.
+    Use getLatLng on the first result to get lat lng.
+    use MoveMapTo function on the lat lng to move the map.  
+  */
   return (
     <div className="search">
       <Combobox
-        // might need to wrap comboxbox in div and move classname to div
         onSelect={async (address) => {
-          setValue(address, false);
-          clearSuggestions();
+          setValue(address, false); // set the value to whatever address the user selected. False: shouldFetchData? - already know the value the user selected
+          clearSuggestions(); // no longer shows suggestions to user
           try {
             const results = await getGeocode({ address });
             const { lat, lng } = await getLatLng(results[0]);
@@ -253,10 +295,12 @@ function Search({ moveMapTo }) {
         />
 
         <ComboboxPopover className="popover">
-          {status === "OK" &&
-            data.map(({ id, description }) => (
-              <ComboboxOption key={id} value={description} />
-            ))}
+          <ComboboxList>
+            {status === "OK" &&
+              data.map(({ id, description }) => (
+                <ComboboxOption key={id} value={description} />
+              ))}
+          </ComboboxList>
         </ComboboxPopover>
       </Combobox>
     </div>
