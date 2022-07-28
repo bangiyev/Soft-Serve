@@ -4,6 +4,9 @@ import {
   useLoadScript,
   Marker,
   InfoWindow,
+  Circle,
+  MarkerClusterer,
+  DirectionsRenderer,
 } from "@react-google-maps/api";
 import { add, formatRelative } from "date-fns";
 /*
@@ -63,6 +66,8 @@ function App() {
   // starts as null and gets a value when the user clicks a marker
   const [selectedMarker, setSelectedMarker] = useState(null);
 
+  const [searchedMarkers, setSearchedMarkers] = useState([]);
+
   // On launch, opens map to this point
   const center = useMemo(() => ({ lat: 43, lng: -80 }), []);
   // GoogleMap options
@@ -85,16 +90,44 @@ function App() {
     if you do nothing at all, the function will retain the same value, never triggering
     a re-render because of react thinking it's different value
   */
-  const onMapClick = useCallback((event) => {
-    setMarkers((current) => [
-      ...current,
-      {
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng(),
-        time: new Date(),
+
+  const onMapClick = async (event) => {
+    const newMarker = {
+      lat: event.latLng.lat(),
+      lng: event.latLng.lng(),
+      time: new Date(),
+    };
+    markDb(newMarker);
+  };
+
+  const markDb = async (newMarker) => {
+    const res = await fetch("http://localhost:5000/markers", {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json",
       },
-    ]);
-  }, []);
+      body: JSON.stringify(newMarker),
+    });
+    const data = await res.json();
+    setMarkers([...markers, newMarker]);
+  };
+
+  // const onMapClick = useCallback(
+  //   (event) => {
+  //     setMarkers(
+  //       (current) => [
+  //         ...current,
+  //         {
+  //           lat: event.latLng.lat(),
+  //           lng: event.latLng.lng(),
+  //           time: new Date(),
+  //         },
+  //       ],
+  //       console.log(markers)
+  //     );
+  //   },
+  //   [markers]
+  // );
 
   // To retain a ref to the map instance. Used for when searching, pan and zoom the map
   const mapRef = useRef();
@@ -298,7 +331,7 @@ function Search({ moveMapTo }) {
           <ComboboxList>
             {status === "OK" &&
               data.map(({ id, description }) => (
-                <ComboboxOption key={id} value={description} />
+                <ComboboxOption key={id + description} value={description} /> // just using id as a key gives uniqueness error.
               ))}
           </ComboboxList>
         </ComboboxPopover>
