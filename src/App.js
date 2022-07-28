@@ -109,8 +109,12 @@ function App() {
       body: JSON.stringify(newMarker),
     });
     const data = await res.json();
-    setMarkers([...markers, newMarker]);
+    console.log(data);
+    setMarkers([...markers, data]);
+    // console.log(markers);
   };
+
+  // original func w/o db
 
   // const onMapClick = useCallback(
   //   (event) => {
@@ -153,14 +157,24 @@ function App() {
 
   // infoWindow takes 1 child, so you can put in a div and put any html code you want in it
 
-  const deleteMarker = (clickedMarker) => {
-    setMarkers(
-      markers.filter(
-        (marker) =>
-          marker.lat !== clickedMarker.lat && marker.lng !== clickedMarker.lng
-      )
-    );
+  const deleteMarker = async (clickedMarker) => {
+    await fetch(`http://localhost:5000/markers/${clickedMarker.id}`, {
+      method: "DELETE",
+    });
+    setMarkers(markers.filter((marker) => marker.id !== clickedMarker.id));
   };
+
+  // original delete func before db
+
+  // const deleteMarker = (clickedMarker) => {
+  //   setMarkers(
+  //     markers.filter(
+  //       (marker) =>
+  //         marker.lat !== clickedMarker.lat && marker.lng !== clickedMarker.lng
+  //     )
+  //   );
+  // };
+
   // useCallback so that it only ever creates one of these functions
   // no dependency array - never need to change the definition of this function
   // pass moveMapTo function as a prop to the search component so that the search Function can receive the prop: moveMapTo
@@ -188,7 +202,7 @@ function App() {
       >
         {markers.map((marker) => (
           <Marker
-            key={marker.time.toISOString()}
+            key={marker.id} // marker.time.toISOString()
             position={{ lat: marker.lat, lng: marker.lng }}
             opacity={0.65}
             onClick={() => {
