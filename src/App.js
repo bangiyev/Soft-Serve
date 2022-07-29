@@ -14,6 +14,7 @@ import { add, formatRelative } from "date-fns";
   Takes 2 dates as parameters, compares them, and makes a string of a date (when the 
     event occured in relation to current time)
 */
+import { ToastContainer, toast } from "react-toastify";
 import "@reach/combobox/styles.css";
 import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import mapStyles from "./mapStyles";
@@ -31,6 +32,8 @@ import {
   ComboboxOption,
 } from "@reach/combobox";
 import "@reach/combobox/styles.css";
+
+// const google = window.google;
 
 const mapContainerStyle = {
   // set width and height of the div they put around the googleMap
@@ -85,8 +88,10 @@ function App() {
   // starts as null and gets a value when the user clicks a marker
   const [selectedMarker, setSelectedMarker] = useState(null);
 
+  const [userLocation, setUserLocation] = useState();
+
   // On launch, opens map to this point
-  const center = useMemo(() => ({ lat: 43, lng: -80 }), []);
+  const center = useMemo(() => ({ lat: 40.712776, lng: -74.005974 }), []);
   // GoogleMap options
   const options = useMemo(
     () => ({
@@ -197,8 +202,25 @@ function App() {
   // pass moveMapTo function as a prop to the search component so that the search Function can receive the prop: moveMapTo
   const moveMapTo = useCallback(({ lat, lng }) => {
     mapRef.current.panTo({ lat, lng });
-    mapRef.current.setZoom(16);
+    mapRef.current.setZoom(15);
   }, []);
+
+  const getDirections = async (marker) => {
+    {
+      userLocation
+        ? console.log("get directions")
+        : console.log("no location set"); // notify that theres no location set
+    }
+  };
+
+  //   const service = new google.maps.DirectionsService();
+  //   service.route({
+
+  //     origin:
+  //     destination: {lat: marker.lat, lng: marker.lng},
+  //   }
+  //   )
+  // };
 
   if (loadError) return "Error loading maps";
   if (!isLoaded) return "Loading maps";
@@ -208,7 +230,7 @@ function App() {
     <div>
       <h1>Logo</h1>
       <Search moveMapTo={moveMapTo} />
-      <FindUser moveMapTo={moveMapTo} />
+      <FindUser moveMapTo={moveMapTo} setUserLocation={setUserLocation} />
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={9}
@@ -217,12 +239,42 @@ function App() {
         onClick={onMapClick}
         onLoad={onMapLoad}
       >
+        {userLocation && (
+          <>
+            <Marker
+              position={userLocation}
+              icon={{
+                url: `/userPin.svg`,
+                origin: new window.google.maps.Point(0, 0),
+                anchor: new window.google.maps.Point(15, 15),
+                scaledSize: new window.google.maps.Size(30, 30),
+              }}
+            />
+            <Circle
+              center={userLocation}
+              radius={1000}
+              options={circleOptionsNear}
+            />
+            <Circle
+              center={userLocation}
+              radius={2500}
+              options={circleOptionsFar}
+            />
+          </>
+        )}
+
         {markers.map((marker) => (
           <Marker
+            icon={{
+              url: `/iceCreamMarker.svg`,
+              origin: new window.google.maps.Point(0, 0),
+              anchor: new window.google.maps.Point(15, 15),
+              scaledSize: new window.google.maps.Size(30, 30),
+            }}
             key={marker.id} // marker.time.toISOString()
             //time={marker.time.toISOString()}
             position={{ lat: marker.lat, lng: marker.lng }}
-            opacity={0.65}
+            //opacity={0.65}
             onClick={() => {
               setSelectedMarker(marker);
             }}
@@ -239,9 +291,16 @@ function App() {
               setSelectedMarker(null);
             }} //When you close the window, unselect the marker
           >
-            <div className="infoWindowDiv">
+            <div>
               <h2> Truck reported</h2>
               <p>Reported at {selectedMarker.time}</p>
+              <button
+                onClick={() => {
+                  getDirections(selectedMarker);
+                }}
+              >
+                Get Directions
+              </button>
             </div>
           </InfoWindow>
         ) : null}
@@ -277,7 +336,7 @@ function App() {
 // success function will do something
 // .getCurrentPosition( ()=>{}, ()=> null  )  ---- (success, error, options) -- not using options
 // success function gives a value we can call position
-function FindUser({ moveMapTo }) {
+function FindUser({ moveMapTo, setUserLocation, countMarkersAroundUser }) {
   return (
     <button
       className="findUser"
@@ -288,6 +347,11 @@ function FindUser({ moveMapTo }) {
               lat: position.coords.latitude,
               lng: position.coords.longitude,
             });
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            countMarkersAroundUser({});
           },
           () => null
         );
@@ -372,5 +436,28 @@ function Search({ moveMapTo }) {
     </div>
   );
 }
+
+const circleOptionsDefault = {
+  strokeOpacity: 0.5,
+  strokeWeight: 2,
+  clickable: false,
+  draggable: false,
+  editable: false,
+  visible: true,
+};
+const circleOptionsNear = {
+  ...circleOptionsDefault,
+  zIndex: 3,
+  fillOpacity: 0.03,
+  strokeColor: "#70d8e6",
+  fillColor: "#70d8e6",
+};
+const circleOptionsFar = {
+  ...circleOptionsDefault,
+  zIndex: 1,
+  fillOpacity: 0.03,
+  strokeColor: "#FF5252",
+  fillColor: "#FF5252",
+};
 
 export default App;
