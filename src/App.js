@@ -62,11 +62,28 @@ function App() {
 
       setMarkers(current => [...current, {lat: event.latlng.lat(), lng: event.latlng.lng(), time: new Date()}])
   */
+
+  useEffect(() => {
+    let fetched = true;
+    const getMarkers = async () => {
+      const markersFromServer = await fetchMarkers();
+      if (fetched) {
+        setMarkers(markersFromServer);
+      }
+    };
+    getMarkers();
+    return () => (fetched = false);
+  }, []);
+
+  const fetchMarkers = async () => {
+    const res = await fetch("http://localhost:5000/markers");
+    const data = await res.json();
+    return data;
+  };
+
   // state to store the current selected marker the user wants to see details for.
   // starts as null and gets a value when the user clicks a marker
   const [selectedMarker, setSelectedMarker] = useState(null);
-
-  const [searchedMarkers, setSearchedMarkers] = useState([]);
 
   // On launch, opens map to this point
   const center = useMemo(() => ({ lat: 43, lng: -80 }), []);
@@ -203,6 +220,7 @@ function App() {
         {markers.map((marker) => (
           <Marker
             key={marker.id} // marker.time.toISOString()
+            //time={marker.time.toISOString()}
             position={{ lat: marker.lat, lng: marker.lng }}
             opacity={0.65}
             onClick={() => {
@@ -223,9 +241,7 @@ function App() {
           >
             <div className="infoWindowDiv">
               <h2> Truck reported</h2>
-              <p>
-                Reported at {formatRelative(selectedMarker.time, new Date())}{" "}
-              </p>
+              <p>Reported at {selectedMarker.time}</p>
             </div>
           </InfoWindow>
         ) : null}
@@ -233,6 +249,9 @@ function App() {
     </div>
   );
 }
+
+// formatRelative(selectedMarker.time, new Date())
+
 // requestoptions: if the user searches, it will prefer places near the location
 // that you're passing into requestOptions
 // it actually wants to receive functions that you call to get the lat lng values, so you can
