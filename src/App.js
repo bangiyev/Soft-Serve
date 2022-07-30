@@ -121,6 +121,7 @@ function App() {
       time: new Date(),
     };
     markDb(newMarker);
+    notifyMarkerPlaced();
   };
 
   const markDb = async (newMarker) => {
@@ -161,11 +162,22 @@ function App() {
   // pass moveMapTo function as a prop to the search component so that the search Function can receive the prop: moveMapTo
   const moveMapTo = useCallback(({ lat, lng }) => {
     mapRef.current.panTo({ lat, lng });
-    mapRef.current.setZoom(13.5);
+    mapRef.current.setZoom(14);
   }, []);
 
   const notifyNoLocation = () => {
     toast.error("Must set location first", {
+      position: "bottom-left",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  };
+  const notifyMarkerPlaced = () => {
+    toast.success("Truck reported! Thank you for contributing", {
       position: "bottom-left",
       autoClose: 5000,
       hideProgressBar: false,
@@ -237,7 +249,7 @@ function App() {
 
   return (
     <div>
-      <h1>Logo</h1>
+      <h1>Logo Here</h1>
       <Search moveMapTo={moveMapTo} />
       <FindUser moveMapTo={moveMapTo} setUserLocation={setUserLocation} />
       <ToastContainer
@@ -254,7 +266,7 @@ function App() {
 
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        zoom={9}
+        zoom={12.5}
         center={center}
         options={options}
         onClick={onMapClick}
