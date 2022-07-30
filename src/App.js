@@ -89,7 +89,7 @@ function App() {
   const [selectedMarker, setSelectedMarker] = useState(null);
 
   const [userLocation, setUserLocation] = useState();
-  const [directions, setDirections] = useState();
+  const [directions, setDirections] = useState(null);
 
   // On launch, opens map to this point
   const center = useMemo(() => ({ lat: 40.712776, lng: -74.005974 }), []);
@@ -203,7 +203,7 @@ function App() {
           {
             origin: { lat: userLocation.lat, lng: userLocation.lng },
             destination: dest,
-            travelMode: google.maps.TravelMode.DRIVING,
+            travelMode: google.maps.TravelMode.WALKING,
           },
           (result, status) => {
             if (status === "OK" && result) {
@@ -226,9 +226,10 @@ function App() {
 
   // infoWindow takes 1 child, so you can put in a div and put any html code you want in it
 
-  const windowOnLoad = (infoWindow) => {
-    console.log("infowindow: ", infoWindow);
-  };
+  // This is for InfoWindow onLoad --  commented out due to temp swap to infoWindowF
+  // const windowOnLoad = (infoWindow) => {
+  //   console.log("infowindow: ", infoWindow);
+  // };
 
   if (loadError) return "Error loading maps";
   if (!isLoaded) return "Loading maps";
@@ -295,6 +296,7 @@ function App() {
             position={{ lat: marker.lat, lng: marker.lng }}
             onClick={() => {
               setSelectedMarker(marker);
+              // setDirections(null);
             }}
             onRightClick={() => {
               deleteMarker(marker);
@@ -327,6 +329,22 @@ function App() {
             )}
           </Marker>
         ))}
+
+        {directions ? (
+          <DirectionsRenderer
+            directions={directions}
+            options={{
+              polylineOptions: {
+                zIndex: 50,
+                strokeColor: "#2bc440",
+                strokeWeight: 5,
+              },
+            }}
+          />
+        ) : (
+          console.log("no directions")
+          // <DirectionsRenderer directions={null} />
+        )}
 
         {/* {selectedMarker ? (
           <InfoWindow
