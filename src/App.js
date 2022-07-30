@@ -343,7 +343,6 @@ function App() {
           />
         ) : (
           console.log("no directions")
-          // <DirectionsRenderer directions={null} />
         )}
 
         {/* {selectedMarker ? (
