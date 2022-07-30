@@ -1,11 +1,10 @@
-import React from "react";
 import {
   GoogleMap,
   useLoadScript,
   Marker,
   InfoWindow,
+  InfoWindowF,
   Circle,
-  MarkerClusterer,
   DirectionsRenderer,
 } from "@react-google-maps/api";
 import { add, formatRelative } from "date-fns";
@@ -15,6 +14,7 @@ import { add, formatRelative } from "date-fns";
     event occured in relation to current time)
 */
 import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "@reach/combobox/styles.css";
 import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import mapStyles from "./mapStyles";
@@ -32,8 +32,6 @@ import {
   ComboboxOption,
 } from "@reach/combobox";
 import "@reach/combobox/styles.css";
-
-// const google = window.google;
 
 const mapContainerStyle = {
   // set width and height of the div they put around the googleMap
@@ -56,6 +54,8 @@ function App() {
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
     libraries,
   });
+
+  const google = window.google;
   const [markers, setMarkers] = useState([]);
   /*
     There are 2 ways to use setMarkers.
@@ -89,6 +89,7 @@ function App() {
   const [selectedMarker, setSelectedMarker] = useState(null);
 
   const [userLocation, setUserLocation] = useState();
+  const [directions, setDirections] = useState();
 
   // On launch, opens map to this point
   const center = useMemo(() => ({ lat: 40.712776, lng: -74.005974 }), []);
@@ -133,27 +134,7 @@ function App() {
     const data = await res.json();
     console.log(data);
     setMarkers([...markers, data]);
-    // console.log(markers);
   };
-
-  // original func w/o db
-
-  // const onMapClick = useCallback(
-  //   (event) => {
-  //     setMarkers(
-  //       (current) => [
-  //         ...current,
-  //         {
-  //           lat: event.latLng.lat(),
-  //           lng: event.latLng.lng(),
-  //           time: new Date(),
-  //         },
-  //       ],
-  //       console.log(markers)
-  //     );
-  //   },
-  //   [markers]
-  // );
 
   // To retain a ref to the map instance. Used for when searching, pan and zoom the map
   const mapRef = useRef();
@@ -168,17 +149,6 @@ function App() {
     // use ref when you want to retain state without causing re-renders
   }, []);
 
-  // To show markers on the map, you render them inside the GoogleMap component
-  // Markers.map. For each marker, show a marker component that comes with the GoogleMaps package
-  // Markers need a key (change it to ID later, but for now 'time' is fine). since we're iterating,
-  // key must be unique for react.
-
-  // Marker onClick event receives a function that's called when the user clicks
-  // Call setSelected to set the marker as its iterating and drawing the markers on the map
-  // it will pass in the marker that was clicked, aligning with the marker being rendered
-
-  // infoWindow takes 1 child, so you can put in a div and put any html code you want in it
-
   const deleteMarker = async (clickedMarker) => {
     await fetch(`http://localhost:5000/markers/${clickedMarker.id}`, {
       method: "DELETE",
@@ -186,41 +156,79 @@ function App() {
     setMarkers(markers.filter((marker) => marker.id !== clickedMarker.id));
   };
 
-  // original delete func before db
-
-  // const deleteMarker = (clickedMarker) => {
-  //   setMarkers(
-  //     markers.filter(
-  //       (marker) =>
-  //         marker.lat !== clickedMarker.lat && marker.lng !== clickedMarker.lng
-  //     )
-  //   );
-  // };
-
   // useCallback so that it only ever creates one of these functions
   // no dependency array - never need to change the definition of this function
   // pass moveMapTo function as a prop to the search component so that the search Function can receive the prop: moveMapTo
   const moveMapTo = useCallback(({ lat, lng }) => {
     mapRef.current.panTo({ lat, lng });
-    mapRef.current.setZoom(15);
+    mapRef.current.setZoom(13.5);
   }, []);
 
-  const getDirections = async (marker) => {
+  const notifyNoLocation = () => {
+    toast.error("Must set location first", {
+      position: "bottom-left",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  };
+
+  const getLocationForDirections = async () => {
+    const result = navigator.geolocation.getCurrentPosition(
+      (position) => {
+        moveMapTo({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => null
+    );
+  };
+
+  const getDirections = (marker) => {
     {
-      userLocation
-        ? console.log("get directions")
-        : console.log("no location set"); // notify that theres no location set
+      let dest = { lat: marker.lat, lng: marker.lng };
+      if (!userLocation) {
+        notifyNoLocation();
+      } else {
+        const service = new google.maps.DirectionsService();
+        service.route(
+          {
+            origin: { lat: userLocation.lat, lng: userLocation.lng },
+            destination: dest,
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === "OK" && result) {
+              setDirections(result);
+              console.log(result);
+            }
+          }
+        );
+      }
     }
   };
 
-  //   const service = new google.maps.DirectionsService();
-  //   service.route({
+  // To show markers on the map, you render them inside the GoogleMap component
+  // Markers.map. For each marker, show a marker component that comes with the GoogleMaps package
+  // Markers need a key since we're iterating, key must be unique for react.
 
-  //     origin:
-  //     destination: {lat: marker.lat, lng: marker.lng},
-  //   }
-  //   )
-  // };
+  // Marker onClick event receives a function that's called when the user clicks
+  // Call setSelected to set the marker as its iterating and drawing the markers on the map
+  // it will pass in the marker that was clicked, aligning with the marker being rendered
+
+  // infoWindow takes 1 child, so you can put in a div and put any html code you want in it
+
+  const windowOnLoad = (infoWindow) => {
+    console.log("infowindow: ", infoWindow);
+  };
 
   if (loadError) return "Error loading maps";
   if (!isLoaded) return "Loading maps";
@@ -231,6 +239,18 @@ function App() {
       <h1>Logo</h1>
       <Search moveMapTo={moveMapTo} />
       <FindUser moveMapTo={moveMapTo} setUserLocation={setUserLocation} />
+      <ToastContainer
+        position="bottom-left"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={9}
@@ -271,29 +291,54 @@ function App() {
               anchor: new window.google.maps.Point(15, 15),
               scaledSize: new window.google.maps.Size(30, 30),
             }}
-            key={marker.id} // marker.time.toISOString()
-            //time={marker.time.toISOString()}
+            key={marker.id}
             position={{ lat: marker.lat, lng: marker.lng }}
-            //opacity={0.65}
             onClick={() => {
               setSelectedMarker(marker);
             }}
             onRightClick={() => {
               deleteMarker(marker);
             }}
-          />
+          >
+            {selectedMarker && selectedMarker.id === marker.id && (
+              <InfoWindowF
+                // onLoad={windowOnLoad}
+                options={infoWindowOptions}
+                position={{
+                  lat: selectedMarker.lat,
+                  lng: selectedMarker.lng,
+                }}
+                onCloseClick={() => {
+                  setSelectedMarker(null);
+                }}
+              >
+                <div>
+                  <h2>Truck Reported</h2>
+                  <p></p>
+                  <button
+                    onClick={() => {
+                      getDirections(selectedMarker);
+                    }}
+                  >
+                    Get Directions
+                  </button>
+                </div>
+              </InfoWindowF>
+            )}
+          </Marker>
         ))}
 
-        {selectedMarker ? (
+        {/* {selectedMarker ? (
           <InfoWindow
             position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
             onCloseClick={() => {
               setSelectedMarker(null);
+              console.log("close clicked");
             }} //When you close the window, unselect the marker
           >
             <div>
               <h2> Truck reported</h2>
-              <p>Reported at {selectedMarker.time}</p>
+              <p> @@@@@@@@@@@@@@@@@@@@@@ </p>
               <button
                 onClick={() => {
                   getDirections(selectedMarker);
@@ -303,7 +348,7 @@ function App() {
               </button>
             </div>
           </InfoWindow>
-        ) : null}
+        ) : null} */}
       </GoogleMap>
     </div>
   );
@@ -336,7 +381,7 @@ function App() {
 // success function will do something
 // .getCurrentPosition( ()=>{}, ()=> null  )  ---- (success, error, options) -- not using options
 // success function gives a value we can call position
-function FindUser({ moveMapTo, setUserLocation, countMarkersAroundUser }) {
+function FindUser({ moveMapTo, setUserLocation }) {
   return (
     <button
       className="findUser"
@@ -351,7 +396,6 @@ function FindUser({ moveMapTo, setUserLocation, countMarkersAroundUser }) {
               lat: position.coords.latitude,
               lng: position.coords.longitude,
             });
-            countMarkersAroundUser({});
           },
           () => null
         );
@@ -458,6 +502,10 @@ const circleOptionsFar = {
   fillOpacity: 0.03,
   strokeColor: "#FF5252",
   fillColor: "#FF5252",
+};
+const infoWindowOptions = {
+  zIndex: 4,
+  color: "FF5252",
 };
 
 export default App;
