@@ -1,6 +1,6 @@
 # Soft Serve
 
-Google Maps app to mark and update ice cream truck locations
+Google Maps app that enables communities to report and update known locations of their favorite ice cream trucks
 
 ## Features
 
