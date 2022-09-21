@@ -15,4 +15,4 @@ Google Maps app that enables communities to report and update known locations of
 
 ## Note 
 
-- InfoWindow component is slightly bugged, so I used InfoWindowF as suggested by a comment on react-google-maps support
+- InfoWindow component is slightly bugged (renders twice), so I used InfoWindowF as suggested by a comment on react-google-maps support
